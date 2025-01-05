@@ -1,11 +1,24 @@
 package com.example;
 
-public abstract class LEDMode {
-    public abstract void activate();
+/**
+ * LEDMode defines the modes for the LED and their corresponding ESP8266 commands.
+ */
+public enum LEDMode {
+    DIM("dim"),     // Command to dim the LED
+    CAST("cast");   // Command to brighten LED for a spell cast
 
-    public abstract void deactivate();
+    private final String command;
 
-    public abstract void onSpellSelected(String spellName);
+    LEDMode(String command) {
+        this.command = command;
+    }
 
-    public abstract void onSpellCasted(int eventId);
+    /**
+     * Returns the command string associated with the LED mode.
+     *
+     * @return The command string.
+     */
+    public String getCommand() {
+        return command;
+    }
 }
