@@ -12,21 +12,31 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.config.ConfigManager;
 import com.google.inject.Provides;
+import net.runelite.client.events.ConfigChanged;
+
+import java.awt.Color;
 
 @Slf4j
 @PluginDescriptor(
 		name = "SpellTracker",
 		description = "Tracks what spell is selected.",
-		tags = {"arrow", "hints", "world", "map", "coordinates", "emotes"}
+		tags = {"spell", "tracking", "magic"}
 )
 public class SpellTrackerPlugin extends Plugin {
+
+	@Inject
+	private SpellTrackerConfig config;
+
+	@Inject
+	private ConfigManager configManager;
+
 	@Inject
 	private Client client;
 
-	// Variables to store the last selected spell, last cast spell, and autocast spell
-	private String lastSelectedSpell = "None";
-	private String lastCastSpell = "None";
+	// Define variables to hold the current spell selections
 	private String autoCastSpell = "None";
+	private String lastSelectedSpell = "None";
+	private String lastCastSpell = "None";  // Declare lastCastSpell here
 
 	@Override
 	protected void startUp() throws Exception {
@@ -38,8 +48,21 @@ public class SpellTrackerPlugin extends Plugin {
 		log.debug("SpellTracker plugin stopped!");
 	}
 
-	@Inject
-	private SpellTrackerConfig config;
+	// Listen to configuration changes
+	@Subscribe
+	public void onConfigChanged(ConfigChanged event) {
+		if (event.getKey().equals("selectedMode")) {
+			SpellTrackerConfig.Mode selectedMode = config.selectedMode();  // Corrected line
+			if (selectedMode == SpellTrackerConfig.Mode.MODE4) {
+				// Show the additional color fields for Mode 4
+				// You can update UI logic here or trigger a UI refresh
+				log.debug("Mode 4 selected - showing color options.");
+			} else {
+				// Hide the additional color fields if another mode is selected
+				log.debug("Other mode selected - hiding color options.");
+			}
+		}
+	}
 
 	/**
 	 * Tracks spell selection from the spellbook or auto-cast setup.
@@ -51,42 +74,55 @@ public class SpellTrackerPlugin extends Plugin {
 			return;
 		}
 
-		// Log all menu options for debugging
 		log.debug("MenuOption clicked: {}", menuOption);
 
-		// Handle spell selection from the autocast menu or spellbook
-		if (menuOption.contains("Autocast") || menuOption.contains("Cast")) {
-			Widget widget = event.getWidget();
-
-			// Log widget details for debugging
-			if (widget != null) {
-				log.debug("Widget ID: {}, Sprite ID: {}", widget.getId(), widget.getSpriteId());
-			} else {
-				log.debug("Widget is null for MenuOption: {}", menuOption);
-				return;
-			}
-
-			// Handle autocast-specific selection
-			if (menuOption.contains("Autocast")) {
-				int spriteId = widget.getSpriteId();
-				autoCastSpell = getSpellNameBySpriteId(spriteId);
-				log.debug("Autocast spell selected: {}", autoCastSpell);
-
-				// Default to autocast spell if no spellbook spell is selected
-				if (lastSelectedSpell.equals("None")) {
-					lastSelectedSpell = autoCastSpell;
-				}
-			}
-
-			// Handle spellbook-specific selection
-			if (menuOption.contains("Cast")) {
-				int spriteId = widget.getSpriteId();
-				lastSelectedSpell = getSpellNameBySpriteId(spriteId);
-				log.debug("Spellbook spell selected: {}", lastSelectedSpell);
-			}
+		// Based on the selected mode, handle each scenario
+		switch (config.selectedMode()) {
+			case MODE1:
+				handleMode1(menuOption, event.getWidget());
+				break;
+			case MODE2:
+				handleMode2(menuOption);
+				break;
+			case MODE3:
+				handleMode3(menuOption);
+				break;
+			case MODE4:
+				handleMode4(menuOption);
+				break;
 		}
 	}
 
+	private void handleMode1(String menuOption, Widget widget) {
+		if (menuOption.contains("Autocast")) {
+			autoCastSpell = getSpellNameByWidget(widget);
+			log.debug("Autocast spell selected (Mode 1): {}", autoCastSpell);
+		} else if (menuOption.contains("Cast")) {
+			lastSelectedSpell = getSpellNameByWidget(widget);
+			log.debug("Spellbook spell selected (Mode 1): {}", lastSelectedSpell);
+		}
+	}
+
+	private void handleMode2(String menuOption) {
+		// Example of blending behavior
+		log.debug("Mode 2 behavior triggered for: {}", menuOption);
+	}
+
+	private void handleMode3(String menuOption) {
+		// Example of split or animation-specific behavior
+		log.debug("Mode 3 behavior triggered for: {}", menuOption);
+	}
+
+	private void handleMode4(String menuOption) {
+		Color primaryColor = config.fixedColor();
+		Color secondaryColor = config.secondaryColor();
+		Color tertiaryColor = config.tertiaryColor();
+
+		log.debug("Mode 4 triggered - Primary: {}, Secondary: {}, Tertiary: {}",
+				primaryColor, secondaryColor, tertiaryColor);
+
+		// Implement actions for Fixed Color mode here
+	}
 
 	/**
 	 * Tracks spell casting using graphical changes.
@@ -95,20 +131,8 @@ public class SpellTrackerPlugin extends Plugin {
 	public void onGraphicChanged(GraphicChanged event) {
 		if (event.getActor() == client.getLocalPlayer()) {
 			int spotAnimId = client.getLocalPlayer().getGraphic();
-			String spellName = getSpellNameBySpotAnimId(spotAnimId);
-
-			if (!spellName.equals("Unknown")) {
-				lastCastSpell = spellName;
-				log.debug("Spell casted: {}", lastCastSpell);
-
-				// Reset lastSelectedSpell to autocast spell after a cast
-				if (!autoCastSpell.equals("None")) {
-					lastSelectedSpell = autoCastSpell;
-					log.debug("Reverting to autocast spell: {}", autoCastSpell);
-				} else {
-					lastSelectedSpell = "None";
-				}
-			}
+			lastCastSpell = getSpellNameBySpotAnimId(spotAnimId);  // Now this will work because lastCastSpell is declared
+			log.debug("Spell casted (graphic): {}", lastCastSpell);
 		}
 	}
 
@@ -119,21 +143,20 @@ public class SpellTrackerPlugin extends Plugin {
 	public void onAnimationChanged(AnimationChanged event) {
 		if (event.getActor() == client.getLocalPlayer()) {
 			int animationId = client.getLocalPlayer().getAnimation();
-			String spellName = getSpellNameByAnimationId(animationId);
-
-			if (!spellName.equals("Unknown")) {
-				lastCastSpell = spellName;
-				log.debug("Spell casted (via animation): {}", lastCastSpell);
-
-				// Reset lastSelectedSpell to autocast spell after a cast
-				if (!autoCastSpell.equals("None")) {
-					lastSelectedSpell = autoCastSpell;
-					log.debug("Reverting to autocast spell: {}", autoCastSpell);
-				} else {
-					lastSelectedSpell = "None";
-				}
-			}
+			lastCastSpell = getSpellNameByAnimationId(animationId);
+			log.debug("Spell casted (animation): {}", lastCastSpell);
 		}
+	}
+
+	/**
+	 * Helper method to map Widget details to spell names.
+	 */
+	private String getSpellNameByWidget(Widget widget) {
+		if (widget == null) {
+			return "Unknown Spell";
+		}
+		int spriteId = widget.getSpriteId();
+		return getSpellNameBySpriteId(spriteId);
 	}
 
 	/**
@@ -141,11 +164,10 @@ public class SpellTrackerPlugin extends Plugin {
 	 */
 	private String getSpellNameBySpriteId(int spriteId) {
 		switch (spriteId) {
-			case 15: // Replace with actual SpriteID for Wind Strike
+			case 15:
 				return "Wind Strike";
-			case 17: // Replace with actual SpriteID for Water Strike
+			case 17:
 				return "Water Strike";
-			// Add more cases for other spells
 			default:
 				return "Unknown Spell";
 		}
@@ -156,11 +178,10 @@ public class SpellTrackerPlugin extends Plugin {
 	 */
 	private String getSpellNameBySpotAnimId(int spotAnimId) {
 		switch (spotAnimId) {
-			case 90: // Replace with actual SpotAnimID for Wind Strike
+			case 90:
 				return "Wind Strike";
-			case 93: // Replace with actual SpotAnimID for Water Strike
+			case 93:
 				return "Water Strike";
-			// Add more cases for other spells
 			default:
 				return "Unknown";
 		}
@@ -171,19 +192,18 @@ public class SpellTrackerPlugin extends Plugin {
 	 */
 	private String getSpellNameByAnimationId(int animationId) {
 		switch (animationId) {
-			case 711: // Replace with actual AnimationID for Wind Strike
+			case 711:
 				return "Bare-hand Spell";
-			case 1162: // Replace with actual AnimationID for Fire Bolt
+			case 1162:
 				return "Staff Casted Spell";
-			// Add more cases for other spells
 			default:
 				return "Unknown";
 		}
 	}
 
+	// This method binds the config
 	@Provides
-	SpellTrackerConfig provideConfig(ConfigManager configManager)
-	{
+	SpellTrackerConfig provideConfig(ConfigManager configManager) {
 		return configManager.getConfig(SpellTrackerConfig.class);
 	}
 }
