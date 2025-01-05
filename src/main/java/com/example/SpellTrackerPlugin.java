@@ -10,10 +10,14 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.config.ConfigManager;
+import com.google.inject.Provides;
 
 @Slf4j
 @PluginDescriptor(
-		name = "SpellTracker"
+		name = "SpellTracker",
+		description = "Tracks what spell is selected.",
+		tags = {"arrow", "hints", "world", "map", "coordinates", "emotes"}
 )
 public class SpellTrackerPlugin extends Plugin {
 	@Inject
@@ -33,6 +37,9 @@ public class SpellTrackerPlugin extends Plugin {
 	protected void shutDown() throws Exception {
 		log.debug("SpellTracker plugin stopped!");
 	}
+
+	@Inject
+	private SpellTrackerConfig config;
 
 	/**
 	 * Tracks spell selection from the spellbook or auto-cast setup.
@@ -173,5 +180,10 @@ public class SpellTrackerPlugin extends Plugin {
 				return "Unknown";
 		}
 	}
-}
 
+	@Provides
+	SpellTrackerConfig provideConfig(ConfigManager configManager)
+	{
+		return configManager.getConfig(SpellTrackerConfig.class);
+	}
+}
