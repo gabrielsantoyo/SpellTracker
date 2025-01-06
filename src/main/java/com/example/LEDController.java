@@ -1,6 +1,6 @@
 package com.example;
 
-import com.fazecast.jSerialComm.SerialPort;
+import com.fazecast.jSerialComm.*;
 import java.io.OutputStream;
 import lombok.extern.slf4j.Slf4j;
 
