@@ -2,41 +2,73 @@ package com.example;
 
 import java.awt.Color;
 
-// Mode4: Player-selected Color Glow
 public class Mode4 {
-    private final Color selectedColor;
+    private final Color selectedColor; // The primary glow color
+    private static final long CAST_DURATION_MS = 500; // Duration for the "cast" effect (0.5 seconds)
+    private final LEDController ledController; // Instance of LEDController to handle actual LED commands
 
-    public Mode4(Color selectedColor) {
+    // Constructor takes the selected color and the LEDController instance
+    public Mode4(Color selectedColor, LEDController ledController) {
         this.selectedColor = selectedColor;
+        this.ledController = ledController;
     }
 
     public void activate() {
-        // Logic to activate the glow effect with the selected color
+        // Logic to activate the dim glow effect with the selected color
+        setDimGlow();
         System.out.println("Mode 4 activated with color: " + selectedColor);
-        // Implement your actual LED or hardware control logic here
     }
 
     public void deactivate() {
         // Logic to deactivate the glow effect
         System.out.println("Mode 4 deactivated.");
-        // Implement your actual LED or hardware control logic here
+        turnOffGlow();
     }
 
     public void onSpellSelected(String spellName) {
-        // When a spell is selected, show the glow color
-        System.out.println("Glow color remains fixed in Mode 4: " + selectedColor);
-        // You can also adjust behavior depending on the spell if needed
+        // Set the glow to dim when a spell is selected
+        System.out.println("Spell selected: " + spellName + ". Setting glow to dim with color: " + selectedColor);
+        setDimGlow();
     }
 
     public void onSpellCasted(int eventId) {
-        // When a spell is cast, trigger the glow effect with the selected color
-        System.out.println("Glow effect triggered for Event ID: " + eventId + " with color: " + selectedColor);
-        // Implement LED control logic for casting a spell and triggering the glow effect
+        // Brighten the glow briefly when a spell is cast
+        System.out.println("Spell cast (Event ID: " + eventId + "). Triggering glow cast effect.");
+        triggerCastGlow();
     }
 
-    // You can also use LEDMode for triggering specific LED modes or behaviors based on game states.
+    private void setDimGlow() {
+        // Implement logic to set a dim glow effect
+        System.out.println("Setting dim glow with color: " + selectedColor);
+        ledController.setLEDMode(LEDMode.DIM);  // Send the command to set the glow to dim
+    }
+
+    private void triggerCastGlow() {
+        // Brighten glow for the cast effect
+        System.out.println("Triggering bright glow for cast with color: " + selectedColor);
+        ledController.setLEDMode(LEDMode.CAST);  // Send the command to brighten the glow
+
+        // Schedule a return to dim glow after 0.5 seconds
+        try {
+            Thread.sleep(CAST_DURATION_MS); // Pause for 0.5 seconds
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("Interrupted during cast glow effect: " + e.getMessage());
+        }
+
+        // Return to dim glow
+        setDimGlow();
+    }
+
+    private void turnOffGlow() {
+        // Implement logic to turn off the glow effect
+        System.out.println("Turning off glow.");
+        ledController.setLEDMode(LEDMode.OFF);  // Send the command to turn off the glow
+    }
+
     public void triggerLEDMode(LEDMode mode) {
-        LEDController controller = new LEDController();
-        controller.setLEDMode(mode);
+        // Example of triggering specific LED behavior
+        ledController.setLEDMode(mode);
+        System.out.println("Triggered LED mode: " + mode);
     }
 }
